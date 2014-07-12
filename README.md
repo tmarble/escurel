@@ -25,4 +25,4 @@ sciurus.
 
 Copyright © 2014 Tom Marble
 
-Licensed under the EPL (see the file [EPL](EPL)).
+Licensed under the EPL (see the file [EPL](https://raw.githubusercontent.com/tmarble/escurel/master/EPL)).
