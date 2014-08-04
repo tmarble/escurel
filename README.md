@@ -21,6 +21,21 @@ sciurus.
   to [Facebook's React](http://facebook.github.io/react/).
 * [EGD](http://egd.sourceforge.net/): The Entropy Gathering Daemon
 
+Here is a fantastic guide to SQRL
+
+* http://sqrl.pl/guide/
+
+Here is a working client (for Android)
+
+* https://play.google.com/store/apps/details?id=net.vrallev.android.sqrl
+
+Here are three (mostly) working servers:
+
+* http://sqrl-login.appspot.com/
+* http://sqrl.pl/sandpit/
+* http://sqrl-test.paragon-es.de/ (didn't seem to auto-login?)
+
+
 ## Copyright and license
 
 Copyright © 2014 Tom Marble
