@@ -1,0 +1,134 @@
+@charset "utf-8";
+
+/* https://developer.mozilla.org/en-US/docs/Web/CSS/@charset */
+
+/* Default resetting */
+html, body, form, fieldset, legend, dt, dd
+{
+  margin: 0;
+  padding: 0;
+  background: #e9e9e9;
+  color: #33343e;
+}
+
+/*
+  https://developer.mozilla.org/en-US/docs/Web/CSS/font-size
+ */
+body, input
+{
+    font-family: Helvetica, Verdana, Arial, sans-serif;
+    font-size: 14pt;
+}
+
+input
+{
+    padding: 0.1em 0.5em 0.1em 0.5em;
+}
+
+h1, h2, h3, h4, h5, h6, p, ul, ol, dl
+{
+  margin: 0 0 0.5em;
+  padding: 0;
+}
+
+h1, h2, h3, h4, h5, h6
+{
+  margin-bottom: 0.0em;
+}
+
+section {
+  padding-top: 10.0em;
+  padding-bottom: 50.0em;
+}
+
+pre
+{
+  font-size: 1.5em;
+}
+
+dd
+{
+  margin-left: 1.5em;
+}
+
+img
+{
+  border: none;
+  vertical-align: top;
+}
+
+ul
+{
+    /* border: 1px solid red; */
+    padding: 0.2em;
+    /* margin-top: 0.5em; */
+}
+
+li
+{
+    /* border: 1px solid blue; */
+    text-align: left;
+    margin-left: 1em;
+    /* padding: 0.3em 0em 0.3em 0em; */
+}
+
+ul.said > li
+{
+    /* border: 1px solid blue; */
+    text-align: left;
+    margin-left: 1em;
+    padding: 0.3em 0em 0.3em 0em;
+}
+
+span.said {
+    /* https://developer.mozilla.org/en-US/docs/Web/CSS/padding
+       Four values apply to 1. top, 2. right, 3. bottom and 4. to the left side
+       https://developer.mozilla.org/en-US/docs/Web/CSS/margin
+       https://developer.mozilla.org/en-US/docs/Web/CSS/border
+       */
+    background: white;
+    margin-left: 0.5em;
+    padding: 0.1em 0.5em 0.1em 0.5em;
+    border: 1px solid #33343e;
+}
+
+a
+{
+    color: blue;
+}
+
+a:hover
+{
+    color: purple;
+}
+
+td {
+    vertical-align: middle;
+}
+
+/* classes */
+.container {
+    padding: 1em;
+}
+
+.debug {
+    background: #bbb;
+    padding: 0.5em;
+}
+
+.center-middle {
+    text-align: center;
+    vertical-align: middle;
+}
+
+.vspace
+{
+    width: 10px;
+    height: 100px;
+}
+
+.vspacer
+{
+    width: 10px;
+    height: 3000px;
+}

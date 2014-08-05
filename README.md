@@ -13,6 +13,25 @@ first specified in 1327, comes from Anglo-Norman
 esquirel from the Old French *escurel*, the reflex of a Latin word
 sciurus.
 
+## Running
+
+Download the React javascript library:
+```
+cd resources/public/js/
+wget http://fb.me/react-0.11.1.js
+```
+
+Have [Leiningen](https://github.com/technomancy/leiningen) auto build ClojureScript sources:
+```
+cd ../../..
+lein cljsbuild auto escurel &
+```
+
+Open ```http://localhost:8080``` in your favorite browser:
+```
+open http://localhost:8080
+```
+
 ## References
 
 * Steve Gibson's [Secure Quick Reliable Login (SQRL)](https://www.grc.com/sqrl/sqrl.htm) technology
