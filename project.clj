@@ -8,7 +8,7 @@
 
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/clojurescript "0.0-2280"]
-                 [org.clojure/core.async "0.1.267.0-0d7780-alpha"]
+                 [org.clojure/core.async "0.1.303.0-886421-alpha"]
                  [om "0.7.0"]
                  [javax.servlet/servlet-api "2.5"]
                  [http-kit "2.1.18"]
