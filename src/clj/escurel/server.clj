@@ -17,8 +17,6 @@
     <title>escurel</title>
   </head>
   <body>
-    <h1>escurel</h1>
-    This is escurel
     <div id=\"app\"></div>
     <script src=\"js/react-0.11.1.js\" type=\"text/javascript\"></script>
     <script src=\"js/goog/base.js\" type=\"text/javascript\"></script>
@@ -29,6 +27,10 @@
 ")
 
 (defn debug [req]
+  (let [requests (map
+                   #(str "<b>" (first %) "</b> " (second %) "\n")
+                   req)
+        n (count requests)]
   (str
     "<!DOCTYPE html>
 <html lang=\"en\">
@@ -40,11 +42,12 @@
   <body>
     <h1>escurel: debug</h1>
     <pre>"
-    (string/replace (str req) "," ",\n")
+    "The request contains " n " items:\n"
+    (apply str requests) ;; realize lazy seq
     "</pre>
   </body>
 </html>
-"))
+")))
 
 (defroutes all-routes
   (GET "/" [] index)
