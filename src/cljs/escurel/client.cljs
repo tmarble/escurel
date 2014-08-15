@@ -11,59 +11,83 @@
 (enable-console-print!)
 
 (def app-state
-  (atom {:threads {} ;; {tag {:chan chan :action action}}
-         :tic-toc {:tic true} ;; cursor for tic-toc-view
+  (atom {:monitor { ;; Om component
+                   :threads []
+                   }
          :login {:user nil
                  :status :loggedout
                  } ;; cursor for login-view
+         :tic-toc {:tic true} ;; cursor for tic-toc-view
+         :tic-toc2 {:tic true} ;; cursor for tic-toc-view
          }))
+
+(defn add-monitor-thread [thread]
+  (swap! app-state
+    (fn [app]
+      (let [monitor (:monitor app)
+            threads (:threads monitor)
+            new-threads (conj threads thread)
+            new-monitor (assoc monitor :threads new-threads)]
+        (assoc app :monitor new-monitor)))))
 
 (defn display [show]
   (if show
     #js {}
     #js {:display "none"}))
 
-(defn login-offer [user]
-  (println "login-offer: " user)
-  ;; change login state
-  ;; add timeout if necessary
-  ;; put! value in the login channel
-  )
-
-(defn login-action [tag app v]
-  ;; take v from the login channel
-  )
+(defn login-action [login user]
+  (println "login-action:" user)
+  (om/transact! login
+    (fn [state]
+      (condp = user
+        :loggedin {:user nil :status :loggedout} ;; cannot request this state
+        :loggedout {:user nil :status :loggedout}
+        :sqrl (do
+                (set-timeout #(login-action login :sqrl-timeout) 10.0)
+                {:user nil :status :sqrl})
+        :sqrl-timeout (if (= (:status state) :loggedin)
+                        state
+                        {:user nil :status :loggedout}) ;; timeout
+        ;; just for debugging...
+        {:user user :status :loggedin}))))
 
 ;; login-view is an Om component
 (defn login-view [login owner]
   (reify
     om/IInitState
     (init-state [_]
-      ;; TODO add thread
-      ;; (om/transact! app [:threads]
-      ;;   #(assoc % :login {:chan login :action login-action}))
-      {:init true})
-    om/IRender
-    (render [_]
+      (let [ch (chan 1)
+            request (fn [value]
+                      (println "login-request" value)
+                      (put! ch value))
+            action (fn [value]
+                     (login-action login value))
+            thread {:component :login
+                    :chan ch
+                    :action action}]
+        (add-monitor-thread thread)
+        {:request request}))
+    om/IRenderState
+    (render-state [_ {:keys [request]}]
       (let [{:keys [user status]} login]
         (dom/div #js {:id "login-view"}
           (dom/span #js {:style (display (= status :loggedout))}
             "Please log in ")
           (dom/button #js {:style (display (= status :loggedout))
-                           :onClick #(login-offer true)}
+                           :onClick #(request :sqrl)}
             "Log in")
           (dom/span #js {:style (display (= status :sqrl))}
             "Please use SQRL to login now...")
           (dom/button #js {:style (display (= status :sqrl))
-                           :onClick #(login-offer "fred")}
+                           :onClick #(request "fred")}
             "SQRL")
           (dom/button #js {:style (display (= status :sqrl))
-                           :onClick #(login-offer false)}
+                           :onClick #(request :loggedout)}
             "Cancel")
           (dom/span #js {:style (display (= status :loggedin))}
             "Click to log out ")
           (dom/button #js {:style (display (= status :loggedin))
-                           :onClick #(login-offer false)}
+                           :onClick #(request :loggedout)}
             "Log out")
           )))))
 
@@ -94,14 +118,15 @@
   (reify
     om/IRender
     (render [_]
-      (let [{:keys [login tic-toc]} app] ;; cursors
+      (let [{:keys [monitor login tic-toc tic-toc2]} app] ;; cursors
         (dom/div #js {:id "app-view"}
           (dom/h1 nil "escurel")
           (om/build login-view login)
-          (om/build monitor-view app)
+          (om/build monitor-view monitor)
           (dom/hr nil) ;;-- DEBUG stuff below ------------------
           (dom/ul nil
             (dom/li nil (om/build tic-toc-view tic-toc))
+            (dom/li nil (om/build tic-toc-view tic-toc2))
             (dom/li nil "send server message via ws")
             (dom/li nil "receive server message via ws")
             (dom/li nil "use transit")

@@ -4,7 +4,7 @@
              :refer [<! >! chan put! timeout]]
             [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
-            [escurel.eraf :as eraf :refer [request-animation-frame]]))
+            [escurel.eraf :as eraf :refer [request-new-animation-loop]]))
 
 (def frame-clock (atom {:tic 0 ;; number of times raf called back
                         :timestamp 0 ;; last raf timestamp
@@ -20,9 +20,6 @@
 ;;  :at-tic at-tic
 ;;  :callback callback
 ;;  :interval interval}
-
-
-(def ^{:dynamic true :private true} *raf* (chan (async/sliding-buffer 1)))
 
 ;; (eraf/slow-raf)
 
@@ -40,7 +37,6 @@
                    :at-tic at-tic
                    :callback callback
                    :interval (if interval fire-interval)}]
-        ;; (println "new timeout" timer) ;; debug
         {:tic tic
          :timestamp timestamp
          :delay delay
@@ -61,32 +57,6 @@
   ;; ersatz implementation
   ;; (js/setTimeout #(callback (.now js/Date)) (* 1000.0 secs))
   (set-timer false callback secs))
-
-;; take samples for one second then use that
-(defn calc-new-frame [frame new-timestamp]
-  (let [{:keys [tic timestamp delay samples events]} frame
-        new-tic (inc tic)
-        new-samples (if (or (zero? timestamp) (>= tic 60))
-                      nil
-                      (let [d (- new-timestamp timestamp)
-                            prev-samples (take 9 samples)]
-                        (cons d prev-samples)))
-        new-delay (if (empty? new-samples)
-                    delay ;; use old estimate
-                    (/ (reduce + new-samples) (count new-samples)))
-        new-frame {:tic new-tic
-                   :timestamp new-timestamp
-                   :delay new-delay
-                   :samples new-samples
-                   :events events}]
-    ;; (println "calc-new-frame:" new-frame)
-    new-frame
-    ))
-
-(defn update-frame-clock [new-timestamp]
-  (let [new-frame (swap! frame-clock #(calc-new-frame % new-timestamp))]
-    (go (>! *raf* new-frame))
-    (request-animation-frame update-frame-clock)))
 
 (defn remove-timer [id]
   (swap! frame-clock
@@ -139,53 +109,77 @@
   ;; (js/clearTimeout id)
   (remove-timer id))
 
-(defn raf-action [tag app frame]
+(defn get-component-action [default thread-chan threads notfound]
+  (if (= thread-chan :default)
+    [default #()]
+    (let [thread (first (filter
+                          #(identical? (:chan %) thread-chan)
+                          threads))]
+      (if thread
+        [(:component thread) (:action thread)]
+        [notfound #()]))))
+
+;; take samples for one second then use that
+(defn calc-new-frame [frame new-timestamp]
+  (let [{:keys [tic timestamp delay samples events]} frame
+        new-tic (inc tic)
+        new-samples (if (or (zero? timestamp) (>= tic 60))
+                      nil
+                      (let [d (- new-timestamp timestamp)
+                            prev-samples (take 9 samples)]
+                        (cons d prev-samples)))
+        new-delay (if (empty? new-samples)
+                    delay ;; use old estimate
+                    (/ (reduce + new-samples) (count new-samples)))
+        new-frame {:tic new-tic
+                   :timestamp new-timestamp
+                   :delay new-delay
+                   :samples new-samples
+                   :events events}]
+    new-frame))
+
+(defn monitor-request [monitor monitor-chan new-timestamp]
+  (let [new-frame (swap! frame-clock #(calc-new-frame % new-timestamp))]
+    (put! monitor-chan new-frame)))
+
+(defn monitor-action [monitor frame]
+  (if (map? frame)
   (let [{:keys [tic timestamp delay events]} frame
         {:keys [next-id next-tic timers]} events]
-    ;; (when (zero? (mod tic 60)) ;; debug
-    ;;   (println "raf:" frame)
-    ;;   )
     (when (>= tic next-tic)
       (let [ready-timers (filter #(>= tic (:at-tic %)) timers)]
         (doseq [ready ready-timers]
-          ;; (println "firing timer id: " (:id ready) "now:" (.now js/Date))
           ((:callback ready) timestamp)
           (if (nil? (:interval ready))
             (remove-timer (:id ready))
-            (refresh-timer (:id ready))))))))
-
-(defn get-tag-action [default thread-chan threads notfound]
-  (if (= thread :default)
-    [default #()]
-    (let [tags (keys threads)
-          tag (first (filter
-                          #(if (= (:chan (get threads %)) thread-chan) %)
-                          tags))
-          thread (get threads tag)]
-      (if thread
-        [(:tag thread) (:action thread)]
-        [notfound #()]))))
+            (refresh-timer (:id ready)))))))))
 
 ;; monitor-view is an Om component
-(defn monitor-view [app owner]
+(defn monitor-view [monitor owner]
   (reify
     om/IInitState
     (init-state [_]
-      (om/transact! app [:threads]
-        #(assoc % :raf {:chan *raf* :action raf-action}))
-      (request-animation-frame update-frame-clock)
+      (let [ch (chan (async/sliding-buffer 1))
+            request (fn [value]
+                      (monitor-request monitor ch value))
+            action (fn [value]
+                     (monitor-action monitor value))
+            thread {:component :monitor
+                    :chan ch
+                    :action action}]
+        (om/transact! monitor [:threads] #(conj % thread))
+        (request-new-animation-loop request))
       {:init true})
     om/IWillMount
     (will-mount [_]
       (go (while true
-            (let [threads (:threads @app)
-                  thread-chans (vec (map :chan (vals threads)))
-                  [v thread-chan] (alts! thread-chans)
-                  [tag action] (get-tag-action v thread-chan threads :idle)]
-              ;; (println "tag" tag "thread" thread "val" v) ;; debug
-              (if (= tag :idle)
+            (let [threads (:threads @monitor)
+                  thread-chans (map :chan threads)
+                  [value thread-chan] (alts! thread-chans)
+                  [component action] (get-component-action value thread-chan threads :idle)]
+              (if (= component :idle)
                 (println "hey we should NEVER be idle!")
-                (action tag app v))))))
+                (action value))))))
     om/IRender
     (render [_]
-      (dom/span nil "")))) ;; "Monitor"
+      (dom/span nil ""))))

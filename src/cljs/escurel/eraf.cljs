@@ -20,3 +20,9 @@
   (set! request-animation-frame ersatzRequestAnimationFrame)
   (let [d (if delay delay 996)]
     (set! *eraf-delay* d)))
+
+(defn request-new-animation-loop [callback]
+  (request-animation-frame
+    (fn [timestamp]
+      (callback timestamp)
+      (request-new-animation-loop callback))))
