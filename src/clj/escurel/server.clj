@@ -8,9 +8,7 @@
             [compojure.handler :refer [site]]
             [chord.http-kit :refer [with-channel]]))
 
-(defonce server (atom nil))
-
-(def server-state (atom {:clients {}}))
+(def server-state (atom {:server nil :clients {}}))
 
 (defn index [req]
   "<!DOCTYPE html>
@@ -96,7 +94,7 @@
             (prn "Message received:" msg)
             (>! ws-channel (if error
                              (format "Error: '%s'." (pr-str msg))
-                             (format "You passed: '%s' at %s with %s." (pr-str message) (java.util.Date.) (str msg))
+                             (format "You passed: %s at %s with %s." (pr-str message) (java.util.Date.) (str msg))
                              ))
             (recur)))))))
 
@@ -109,11 +107,15 @@
   (route/not-found "<p>Page not found.</p>"))
 
 (defn stop-server []
-  (when-not (nil? @server)
-    (@server :timeout 100)
-    (reset! server nil)))
+  (let [server (:server @server-state)]
+    (when-not (nil? server)
+      (server :timeout 100)
+      (swap! server-state
+        #(assoc-in % [:server] nil)))))
 
 (defn -main [ & args ]
   (let [port (if args (Integer. (first args)) 8080)]
     (println "starting on port" port)
-    (reset! server (run-server (site #'all-routes) {:port port}))))
+    (let [server (run-server (site #'all-routes) {:port port})]
+      (swap! server-state
+        #(assoc-in % [:server] server)))))

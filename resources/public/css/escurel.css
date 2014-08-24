@@ -25,6 +25,12 @@ input
     padding: 0.1em 0.5em 0.1em 0.5em;
 }
 
+button {
+    font-size: 0.90em;
+    font-family: Helvetica, Verdana, Arial, sans-serif;
+}
+
+
 h1, h2, h3, h4, h5, h6, p, ul, ol, dl
 {
   margin: 0 0 0.5em;
@@ -131,4 +137,17 @@ td {
 {
     width: 10px;
     height: 3000px;
+}
+
+/* https://developer.mozilla.org/en-US/docs/Web/CSS/white-space */
+.hspacer
+{
+    white-space: pre-wrap;
+    /* width: 10em; */
+    /* height: 0.5em; */
+}
+
+.edit-label
+{
+    font-weight: bold;
 }

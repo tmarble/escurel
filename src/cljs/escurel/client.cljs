@@ -2,6 +2,7 @@
   (:require-macros [cljs.core.async.macros :refer [go]])
   (:require [cljs.core.async :as async
              :refer [<! >! chan put! timeout]]
+            [chord.client :refer [ws-ch]]
             [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
             [goog.dom :as gdom]
@@ -18,7 +19,8 @@
                  :status :loggedout
                  } ;; cursor for login-view
          :tic-toc {:tic true} ;; cursor for tic-toc-view
-         :tic-toc2 {:tic true} ;; cursor for tic-toc-view
+         :say-something {:label "Enter a message:"
+                         :msg "" } ;; cursor for say-something
          }))
 
 (defn add-monitor-thread [thread]
@@ -34,6 +36,9 @@
   (if show
     #js {}
     #js {:display "none"}))
+
+(defn hspacer []
+  (dom/span #js {:className "hspacer"} "  "))
 
 (defn login-action [login user]
   (println "login-action:" user)
@@ -113,12 +118,99 @@
           "tic"
           "toc")))))
 
+(defn edit-change [e data edit-key owner]
+  (om/transact! data edit-key (fn [_] (.. e -target -value))))
+
+;; cb is the on-edit callback (a closure bound to the :class/id)
+(defn edit-end [text owner cb]
+  ;; (println "edit-end")
+  (om/set-state! owner :editing false)
+  (cb text))
+
+;; in the Intermediate tutorial this function is used to
+;; persist changes.. here just print the update on the console
+(defn edit-callback [cursor owner text]
+  (let [value (om/value cursor)
+        label (:label value)
+        next-label "You said:"
+        threads (get-in @app-state [:monitor :threads])
+        thread (first (filter #(= (:component %) :app) threads))
+        ws-channel (:chan thread)]
+    (when-not (= label next-label)
+      (om/update! cursor [:label] next-label))
+    (println "sending:" text)
+    (if ws-channel
+      (put! ws-channel text)
+      (println "unable to send to server"))))
+
+;; Om editable component
+(defn editable [data owner {:keys [edit-label edit-key edit-button on-edit] :as opts}]
+  (reify
+    om/IInitState
+    (init-state [_]
+      {:editing false})
+    om/IRenderState
+    (render-state [_ {:keys [editing]}]
+      (let [label (get data edit-label)
+            text (get data edit-key)
+            button (or edit-button "Edit")
+            edit-cb (or on-edit #(edit-callback data owner %))]
+        (dom/div nil
+          (when-not (empty? label)
+            (dom/span #js {:className "edit-label" } label))
+          (hspacer)
+          (dom/span #js {:style (display (not editing))} text)
+          (dom/input
+            #js {:style (display editing)
+                 :value text
+                 :onChange #(edit-change % data edit-key owner)
+                 :onKeyDown #(when (= (.-key %) "Enter")
+                               (edit-end text owner edit-cb))
+                 :onBlur #(when (om/get-state owner :editing)
+                            (edit-end text owner edit-cb))})
+          (hspacer)
+          (dom/button
+            #js {:style (display (not editing))
+                 :onClick #(om/set-state! owner :editing true)}
+            button))))))
+
+;; message from the server
+(defn app-action [ws-channel app value]
+  ;; {:keys [message error]}
+  (println "server:" value))
+
 ;; overall application component
 (defn app-view [app owner]
   (reify
+    om/IWillMount
+    (will-mount [_]
+      ;; (go
+        (let [ws-read (chan (async/buffer 3))
+              ws-write (chan (async/buffer 3))
+              ;; {:keys [ws-channel error]} (<! (ws-ch "ws://localhost:8080/ws"
+              ;;                                  {:format :str
+              ;;                                   :read-ch ws-read
+              ;;                                   :write-ch ws-write}))
+              ws-channel nil
+              error "not initialized"
+              action (fn [value]
+                       (app-action ws-channel app value))
+              thread {:component :app
+                      :chan ws-channel
+                      :action action}]
+          (println "web socket initialized " (nil? ws-channel))
+          (if error
+            (println "error initializing web socket:" error)
+            (when ws-channel
+              (om/transact! app [:monitor :threads] #(conj % thread))
+              ;; (>! ws-channel "I am a new client")
+              (println "sent first message")))
+          (println "INIT app-view"))
+        ;; ) ;; go
+      )
     om/IRender
     (render [_]
-      (let [{:keys [monitor login tic-toc tic-toc2]} app] ;; cursors
+      (let [{:keys [monitor login tic-toc say-something]} app] ;; cursors
         (dom/div #js {:id "app-view"}
           (dom/h1 nil "escurel")
           (om/build login-view login)
@@ -126,9 +218,10 @@
           (dom/hr nil) ;;-- DEBUG stuff below ------------------
           (dom/ul nil
             (dom/li nil (om/build tic-toc-view tic-toc))
-            (dom/li nil (om/build tic-toc-view tic-toc2))
-            (dom/li nil "send server message via ws")
-            (dom/li nil "receive server message via ws")
+            (dom/li nil (om/build editable say-something
+                          {:opts {:edit-label :label
+                                  :edit-key :msg
+                                  :edit-button "Compose"}}))
             (dom/li nil "use transit")
             ))
         ))))
