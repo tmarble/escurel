@@ -184,15 +184,15 @@
   (reify
     om/IWillMount
     (will-mount [_]
-      ;; (go
+      (go ;; performance problem?
         (let [ws-read (chan (async/buffer 3))
               ws-write (chan (async/buffer 3))
-              ;; {:keys [ws-channel error]} (<! (ws-ch "ws://localhost:8080/ws"
-              ;;                                  {:format :str
-              ;;                                   :read-ch ws-read
-              ;;                                   :write-ch ws-write}))
-              ws-channel nil
-              error "not initialized"
+              {:keys [ws-channel error]} (<! (ws-ch "ws://localhost:8080/ws"
+                                               {:format :str
+                                                :read-ch ws-read
+                                                :write-ch ws-write}))
+              ;; ws-channel nil
+              ;; error "not initialized"
               action (fn [value]
                        (app-action ws-channel app value))
               thread {:component :app
@@ -203,10 +203,10 @@
             (println "error initializing web socket:" error)
             (when ws-channel
               (om/transact! app [:monitor :threads] #(conj % thread))
-              ;; (>! ws-channel "I am a new client")
+              (>! ws-channel "I am a new client") ;; go
               (println "sent first message")))
           (println "INIT app-view"))
-        ;; ) ;; go
+        ) ;; go
       )
     om/IRender
     (render [_]
