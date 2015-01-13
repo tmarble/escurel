@@ -12,12 +12,14 @@
 /.lein-*
 
 # project specific artifacts
+/resources/public/js/chord
 /resources/public/js/cljs
-/resources/public/js/escurel.js
+/resources/public/js/clojure
 /resources/public/js/escurel
+/resources/public/js/escurel.js
 /resources/public/js/goog
 /resources/public/js/om
-/resources/public/js/react-0.11.1.js
+/resources/public/js/react-*.js
 
 # Heroku artifacts
 # e.g. heroku config:add JVM_OPTS=-Xms128m

@@ -7,15 +7,17 @@
             :comments "same as Clojure"}
 
   :dependencies [[org.clojure/clojure "1.6.0"]
-                 [org.clojure/clojurescript "0.0-2322"]
-                 [org.clojure/core.async "0.1.338.0-5c5012-alpha"]
-                 [om "0.7.3"]
+                 [org.clojure/clojurescript "0.0-2665"]
+                 [org.clojure/core.async "0.1.346.0-17112a-alpha"]
+                 [om "0.8.0-rc1"]
                  [javax.servlet/servlet-api "2.5"]
                  [http-kit "2.1.19"]
-                 [compojure "1.1.9"]
-                 [jarohen/chord "0.4.2" :exclusions [org.clojure/clojure]]]
+                 [compojure "1.3.1"]
+                 ;; for chord
+                 [com.fasterxml.jackson.core/jackson-core "2.3.2"]
+                 [jarohen/chord "0.5.0" :exclusions [org.clojure/clojure commons-codec com.fasterxml.jackson.core/jackson-core]]]
 
-  :plugins [[lein-cljsbuild "1.0.4-SNAPSHOT"]]
+  :plugins [[lein-cljsbuild "1.0.4"]]
 
   :source-paths ["src/clj"]
 

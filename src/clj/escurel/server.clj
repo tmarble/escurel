@@ -20,7 +20,7 @@
   </head>
   <body>
     <div id=\"app\"></div>
-    <script src=\"js/react-0.11.1.js\" type=\"text/javascript\"></script>
+    <script src=\"js/react-0.12.2.js\" type=\"text/javascript\"></script>
     <script src=\"js/goog/base.js\" type=\"text/javascript\"></script>
     <script src=\"js/escurel.js\" type=\"text/javascript\"></script>
     <script type=\"text/javascript\">goog.require(\"escurel.client\")</script>
