@@ -51,30 +51,31 @@
   (println "Opened connection from"
            remote-addr
            "async-channel"
-           async-channel))
+           ac))
 
-(defn ws-handler [{:keys [remote-addr
-                          async-channel
-                          websocket?]}]
-  (if-not websocket?
-    "Sorry, websocket required"
-    (let [client (get-client async-channel)
-          {:keys [ws-read ws-write]} client]
-      (connection-open-msg! remote-addr ac)
-      (with-channel req ws-channel {:format :transit-json
-                                    :read-ch ws-read
-                                    :write-ch ws-write}
-        (go-loop []
-          (when-let [{:keys [message error] :as msg} (<! ws-channel)]
-            (prn "Message received:" msg)
-            (>! ws-channel
-                (if error
-                  (format "Error: '%s'." (pr-str msg))
-                  (format "You passed: %s at %s with %s."
-                          (pr-str message)
-                          (java.util.Date.)
-                          (str msg)))))
-            (recur))))))
+(defn ws-handler [req]
+  (let [{:keys [remote-addr
+                async-channel
+                websocket?]} req]
+    (if-not websocket?
+      "Sorry, websocket required"
+      (let [client (get-client async-channel)
+            {:keys [ws-read ws-write]} client]
+        (connection-open-msg! remote-addr async-channel)
+        (with-channel req ws-channel {:format :transit-json
+                                      :read-ch ws-read
+                                      :write-ch ws-write}
+          (go-loop []
+            (when-let [{:keys [message error] :as msg} (<! ws-channel)]
+              (prn "Message received:" msg)
+              (>! ws-channel
+                  (if error
+                    (format "Error: '%s'." (pr-str msg))
+                    (format "You passed: %s at %s with %s."
+                            (pr-str message)
+                            (java.util.Date.)
+                            (str msg)))))
+            (recur)))))))
 
 (defroutes all-routes
   (GET "/" [] index)
