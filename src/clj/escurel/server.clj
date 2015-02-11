@@ -47,29 +47,34 @@
           #(assoc-in % [:clients ac] new-client))
         new-client))))
 
-(defn ws-handler [req]
-  (if (not (:websocket? req))
+(defn connection-open-msg! [remote-addr ac]
+  (println "Opened connection from"
+           remote-addr
+           "async-channel"
+           async-channel))
+
+(defn ws-handler [{:keys [remote-addr
+                          async-channel
+                          websocket?]}]
+  (if-not websocket?
     "Sorry, websocket required"
-    (let [remote-addr (:remote-addr req)
-          async-channel (:async-channel req)
-          client (get-client async-channel)
-          ws-read (:ws-read client)
-          ws-write (:ws-write client)]
-      (println "Opened connection from"
-               remote-addr
-               "async-channel"
-               async-channel)
+    (let [client (get-client async-channel)
+          {:keys [ws-read ws-write]} client]
+      (connection-open-msg! remote-addr ac)
       (with-channel req ws-channel {:format :transit-json
                                     :read-ch ws-read
                                     :write-ch ws-write}
         (go-loop []
           (when-let [{:keys [message error] :as msg} (<! ws-channel)]
             (prn "Message received:" msg)
-            (>! ws-channel (if error
-                             (format "Error: '%s'." (pr-str msg))
-                             (format "You passed: %s at %s with %s." (pr-str message) (java.util.Date.) (str msg))
-                             ))
-            (recur)))))))
+            (>! ws-channel
+                (if error
+                  (format "Error: '%s'." (pr-str msg))
+                  (format "You passed: %s at %s with %s."
+                          (pr-str message)
+                          (java.util.Date.)
+                          (str msg)))))
+            (recur))))))
 
 (defroutes all-routes
   (GET "/" [] index)
