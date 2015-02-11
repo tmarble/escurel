@@ -12,39 +12,26 @@
 
 (def index (slurp "resources/index.html"))
 
+(def debug-template (slurp "resources/debug.html.template"))
+
 (defn debug [req]
-  (let [requests (map
-                   #(str "<b>" (first %) "</b> " (second %) "\n")
-                   req)
+  (let [requests (map (fn [[k v]]
+                        (format "<b>%s</b>%s\n" k v))
+                      req)
         n (count requests)
         params (:params req)
-        say (:say params)]
+        say (:say params)
+        rs (reduce str requests)
+        state @server-state]
     (when say
       (println "someone said:" say)
-      (let [clients (vals (:clients @server-state))]
-        (when clients
-          (doseq [client clients]
-            (put! (:ws-write client)
-              (format "Somone said: '%s' at %s." say (java.util.Date.)))))))
-    (str
-      "<!DOCTYPE html>
-<html lang=\"en\">
-  <head>
-    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\"/>
-    <link href=\"css/escurel.css\" rel=\"stylesheet\"/>
-    <title>escurel: debug</title>
-  </head>
-  <body>
-    <h1>escurel: debug</h1>
-    <pre>"
-      "The request contains " n " items:\n"
-      (apply str requests) ;; realize lazy seq
-      "server-state:"
-      @server-state
-      "</pre>
-  </body>
-</html>
-")))
+      (if-let [clients (seq (vals (:clients @server-state)))]
+        (doseq [client clients]
+          (put! (:ws-write client)
+                (format "Somone said: '%s' at %s."
+                        say
+                        (java.util.Date.))))))
+    (format debug-template n rs state)))
 
 (defn get-client [async-channel]
   (let [ac (str async-channel)
