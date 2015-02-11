@@ -55,9 +55,11 @@
           client (get-client async-channel)
           ws-read (:ws-read client)
           ws-write (:ws-write client)]
-      (println "Opened connection from" remote-addr
-        "async-channel" async-channel)
-      (with-channel req ws-channel {:format :str
+      (println "Opened connection from"
+               remote-addr
+               "async-channel"
+               async-channel)
+      (with-channel req ws-channel {:format :transit-json
                                     :read-ch ws-read
                                     :write-ch ws-write}
         (go-loop []

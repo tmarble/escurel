@@ -188,7 +188,7 @@
         (let [ws-read (chan (async/buffer 3))
               ws-write (chan (async/buffer 3))
               {:keys [ws-channel error]} (<! (ws-ch "ws://localhost:8080/ws"
-                                               {:format :str
+                                               {:format :transit-json
                                                 :read-ch ws-read
                                                 :write-ch ws-write}))
               ;; ws-channel nil
