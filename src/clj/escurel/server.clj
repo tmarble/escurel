@@ -71,8 +71,7 @@
               (>! ws-channel
                   (if error
                     (format "Error: '%s'." (pr-str msg))
-                    (format "You passed: %s at %s with %s."
-                            (pr-str message)
+                    (format "Client at %s said %s."
                             (java.util.Date.)
                             (str msg)))))
             (recur)))))))

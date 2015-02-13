@@ -62,9 +62,16 @@
     om/IInitState
     (init-state [_]
       (let [ch (chan 1)
-            request (fn [value]
+            request (fn [e value]
                       (println "login-request" value)
-                      (put! ch value))
+                      (put! ch value)
+                      ;; "Warning: Returning `false` from an event
+                      ;; handler is deprecated and will be ignored in
+                      ;; a future release. Instead, manually call
+                      ;; e.stopPropagation() or e.preventDefault(), as
+                      ;; appropriate."
+                      (.preventDefault e)
+                      (.stopPropagation e))
             action (fn [value]
                      (login-action login value))
             thread {:component :login
@@ -79,20 +86,20 @@
           (dom/span #js {:style (display (= status :loggedout))}
             "Please log in ")
           (dom/button #js {:style (display (= status :loggedout))
-                           :onClick #(request :sqrl)}
+                           :onClick #(request % :sqrl)}
             "Log in")
           (dom/span #js {:style (display (= status :sqrl))}
             "Please use SQRL to login now...")
           (dom/button #js {:style (display (= status :sqrl))
-                           :onClick #(request "fred")}
+                           :onClick #(request % "fred")}
             "SQRL")
           (dom/button #js {:style (display (= status :sqrl))
-                           :onClick #(request :loggedout)}
+                           :onClick #(request % :loggedout)}
             "Cancel")
           (dom/span #js {:style (display (= status :loggedin))}
             "Click to log out ")
           (dom/button #js {:style (display (= status :loggedin))
-                           :onClick #(request :loggedout)}
+                           :onClick #(request % :loggedout)}
             "Log out")
           )))))
 
@@ -119,13 +126,17 @@
           "toc")))))
 
 (defn edit-change [e data edit-key owner]
-  (om/transact! data edit-key (fn [_] (.. e -target -value))))
+  (om/transact! data edit-key (fn [_] (.. e -target -value)))
+  (.preventDefault e)
+  (.stopPropagation e))
 
 ;; cb is the on-edit callback (a closure bound to the :class/id)
-(defn edit-end [text owner cb]
+(defn edit-end [e text owner cb]
   ;; (println "edit-end")
   (om/set-state! owner :editing false)
-  (cb text))
+  (cb text)
+  (.preventDefault e)
+  (.stopPropagation e))
 
 ;; in the Intermediate tutorial this function is used to
 ;; persist changes.. here just print the update on the console
@@ -165,9 +176,9 @@
                  :value text
                  :onChange #(edit-change % data edit-key owner)
                  :onKeyDown #(when (= (.-key %) "Enter")
-                               (edit-end text owner edit-cb))
+                               (edit-end % text owner edit-cb))
                  :onBlur #(when (om/get-state owner :editing)
-                            (edit-end text owner edit-cb))})
+                            (edit-end % text owner edit-cb))})
           (hspacer)
           (dom/button
             #js {:style (display (not editing))
@@ -222,7 +233,6 @@
                           {:opts {:edit-label :label
                                   :edit-key :msg
                                   :edit-button "Compose"}}))
-            (dom/li nil "use transit")
             ))
         ))))
 

@@ -57,6 +57,6 @@ Here are three (mostly) working servers:
 
 ## Copyright and license
 
-Copyright © 2014 Tom Marble
+Copyright © 2014-2015 Tom Marble
 
 Licensed under the EPL (see the file [EPL](https://raw.githubusercontent.com/tmarble/escurel/master/EPL)).
