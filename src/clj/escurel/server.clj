@@ -10,57 +10,28 @@
 
 (def server-state (atom {:server nil :clients {}}))
 
-(defn index [req]
-  "<!DOCTYPE html>
-<html lang=\"en\">
-  <head>
-    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\"/>
-    <link href=\"css/escurel.css\" rel=\"stylesheet\"/>
-    <title>escurel</title>
-  </head>
-  <body>
-    <div id=\"app\"></div>
-    <script src=\"js/react-0.12.2.js\" type=\"text/javascript\"></script>
-    <script src=\"js/goog/base.js\" type=\"text/javascript\"></script>
-    <script src=\"js/escurel.js\" type=\"text/javascript\"></script>
-    <script type=\"text/javascript\">goog.require(\"escurel.client\")</script>
-  </body>
-</html>
-")
+(def index (slurp "resources/index.html"))
+
+(def debug-template (slurp "resources/debug.html.template"))
 
 (defn debug [req]
-  (let [requests (map
-                   #(str "<b>" (first %) "</b> " (second %) "\n")
-                   req)
+  (let [requests (map (fn [[k v]]
+                        (format "<b>%s</b>%s\n" k v))
+                      req)
         n (count requests)
         params (:params req)
-        say (:say params)]
+        say (:say params)
+        rs (reduce str requests)
+        state @server-state]
     (when say
       (println "someone said:" say)
-      (let [clients (vals (:clients @server-state))]
-        (when clients
-          (doseq [client clients]
-            (put! (:ws-write client)
-              (format "Somone said: '%s' at %s." say (java.util.Date.)))))))
-    (str
-      "<!DOCTYPE html>
-<html lang=\"en\">
-  <head>
-    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\"/>
-    <link href=\"css/escurel.css\" rel=\"stylesheet\"/>
-    <title>escurel: debug</title>
-  </head>
-  <body>
-    <h1>escurel: debug</h1>
-    <pre>"
-      "The request contains " n " items:\n"
-      (apply str requests) ;; realize lazy seq
-      "server-state:"
-      @server-state
-      "</pre>
-  </body>
-</html>
-")))
+      (if-let [clients (seq (vals (:clients @server-state)))]
+        (doseq [client clients]
+          (put! (:ws-write client)
+                (format "Somone said: '%s' at %s."
+                        say
+                        (java.util.Date.))))))
+    (format debug-template n rs state)))
 
 (defn get-client [async-channel]
   (let [ac (str async-channel)
@@ -76,26 +47,34 @@
           #(assoc-in % [:clients ac] new-client))
         new-client))))
 
+(defn connection-open-msg! [remote-addr ac]
+  (println "Opened connection from"
+           remote-addr
+           "async-channel"
+           ac))
+
 (defn ws-handler [req]
-  (if (not (:websocket? req))
-    "Sorry, websocket required"
-    (let [remote-addr (:remote-addr req)
-          async-channel (:async-channel req)
-          client (get-client async-channel)
-          ws-read (:ws-read client)
-          ws-write (:ws-write client)]
-      (println "Opened connection from" remote-addr
-        "async-channel" async-channel)
-      (with-channel req ws-channel {:format :str
-                                    :read-ch ws-read
-                                    :write-ch ws-write}
-        (go-loop []
-          (when-let [{:keys [message error] :as msg} (<! ws-channel)]
-            (prn "Message received:" msg)
-            (>! ws-channel (if error
-                             (format "Error: '%s'." (pr-str msg))
-                             (format "You passed: %s at %s with %s." (pr-str message) (java.util.Date.) (str msg))
-                             ))
+  (let [{:keys [remote-addr
+                async-channel
+                websocket?]} req]
+    (if-not websocket?
+      "Sorry, websocket required"
+      (let [client (get-client async-channel)
+            {:keys [ws-read ws-write]} client]
+        (connection-open-msg! remote-addr async-channel)
+        (with-channel req ws-channel {:format :transit-json
+                                      :read-ch ws-read
+                                      :write-ch ws-write}
+          (go-loop []
+            (when-let [{:keys [message error] :as msg} (<! ws-channel)]
+              (prn "Message received:" msg)
+              (>! ws-channel
+                  (if error
+                    (format "Error: '%s'." (pr-str msg))
+                    (format "You passed: %s at %s with %s."
+                            (pr-str message)
+                            (java.util.Date.)
+                            (str msg)))))
             (recur)))))))
 
 (defroutes all-routes
