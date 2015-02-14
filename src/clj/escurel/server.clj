@@ -39,19 +39,34 @@
           (debug-said-msg! client say))))
     (format debug-template n rs state)))
 
+(defn already-registered-client-msg! [ac]
+  (println "Client already registered:" ac))
+
+(defn already-registered-client! [ac client]
+  (already-registered-client-msg! ac)
+  client)
+
+(defn adding-registered-client-msg! [ac]
+  (println "Adding new client: " ac))
+
+(defn adding-registered-client! [state-atom ac client]
+  (adding-registered-client-msg! ac)
+  (let [korks [:clients ac]
+        state! (swap! state-atom assoc-in [:clients ac] client)]
+    (get-in state! korks)))
+
+(defn existing-client [state-atom & ks]
+  (get-in state-atom (reduce conj [:clients] ks)))
+
 (defn get-client [async-channel]
-  (let [ac (str async-channel)
-        existing-client (get-in @server-state [:clients ac])]
-    (if existing-client
-      (do
-        (println "client already registered:" ac)
-        existing-client)
+  (let [ac (str async-channel)]
+    (if-let [client (existing-client server-state ac)]
+      (already-registered-client! ac client)
       (let [new-client {:ws-read (chan (async/sliding-buffer 10))
                         :ws-write (chan (async/dropping-buffer 10))}]
-        (println "adding new client:" ac)
-        (swap! server-state
-          #(assoc-in % [:clients ac] new-client))
-        new-client))))
+        (adding-registered-client! server-state
+                                   ac
+                                   new-client)))))
 
 (defn connection-open-msg! [remote-addr ac]
   (println "Opened connection from"
