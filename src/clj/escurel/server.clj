@@ -14,6 +14,15 @@
 
 (def debug-template (slurp "resources/debug.html.template"))
 
+(defn debug-say-msg! [msg]
+  (println "Someone said: " msg))
+
+(defn debug-said-msg! [client msg]
+  (put! (:ws-write client)
+        (format "Somone said: '%s' at %s."
+                msg
+                (java.util.Date.))))
+
 (defn debug [req]
   (let [requests (map (fn [[k v]]
                         (format "<b>%s</b>%s\n" k v))
@@ -24,13 +33,10 @@
         rs (reduce str requests)
         state @server-state]
     (when say
-      (println "someone said:" say)
-      (if-let [clients (seq (vals (:clients @server-state)))]
+      (debug-say-msg! say)
+      (if-let [clients (seq (-> state :clients vals))]
         (doseq [client clients]
-          (put! (:ws-write client)
-                (format "Somone said: '%s' at %s."
-                        say
-                        (java.util.Date.))))))
+          (debug-said-msg! client say))))
     (format debug-template n rs state)))
 
 (defn get-client [async-channel]
